@@ -16,24 +16,16 @@ st.markdown("""
 @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap');
 
 /* ── Reset & base ── */
-html, body, [class*="css"], [class*="st-"] {
+html, body, [class*="css"] {
     font-family: 'DM Sans', sans-serif;
-    color: #e8e4dc !important;
-}
-
-h1, h2, h3, h4, h5, h6, p, span, li, div {
-    color: inherit;
-}
-
-.stMarkdown {
-    color: #e8e4dc !important;
+    color: #e8e4dc;
 }
 
 .stApp {
-    background: #0a0a0f !important;
+    background: #0a0a0f;
     background-image:
         radial-gradient(ellipse 80% 50% at 20% -10%, rgba(255,140,50,0.12) 0%, transparent 60%),
-        radial-gradient(ellipse 60% 40% at 80% 110%, rgba(255,80,30,0.08) 0%, transparent 55%) !important;
+        radial-gradient(ellipse 60% 40% at 80% 110%, rgba(255,80,30,0.08) 0%, transparent 55%);
 }
 
 /* ── Hide default streamlit chrome ── */
@@ -95,23 +87,17 @@ h1, h2, h3, h4, h5, h6, p, span, li, div {
 }
 
 /* ── Streamlit input overrides ── */
-.stTextInput input {
-    background-color: transparent !important;
+.stTextInput > div > div > input {
+    background: rgba(255,255,255,0.05) !important;
+    border: 1px solid rgba(255,140,50,0.25) !important;
+    border-radius: 10px !important;
     color: #f0ebe0 !important;
     font-family: 'DM Sans', sans-serif !important;
     font-size: 1rem !important;
     padding: 0.75rem 1rem !important;
-}
-.stTextInput div[data-baseweb="input"] {
-    background-color: #1a1a24 !important;
-    border: 1px solid rgba(255,140,50,0.25) !important;
-    border-radius: 10px !important;
     transition: border-color 0.2s, box-shadow 0.2s !important;
 }
-.stTextInput div[data-baseweb="input"] > div {
-    background-color: transparent !important;
-}
-.stTextInput div[data-baseweb="input"]:focus-within {
+.stTextInput > div > div > input:focus {
     border-color: #ff8c32 !important;
     box-shadow: 0 0 0 3px rgba(255,140,50,0.12) !important;
 }
