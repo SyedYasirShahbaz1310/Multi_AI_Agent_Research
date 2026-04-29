@@ -257,28 +257,62 @@ html, body, [class*="css"] {
     content: ""; width: 14px; height: 1px; background: var(--accent);
 }
 
-/* ── Streamlit input override ── */
-.stTextInput > div > div > input {
-    background: rgba(255,255,255,0.025) !important;
+/* ── Streamlit input override (modern BaseWeb structure) ── */
+.stTextInput > label { display: none !important; }
+
+/* Kill BaseWeb wrapper backgrounds */
+.stTextInput [data-baseweb="input"],
+.stTextInput [data-baseweb="base-input"],
+.stTextInput div[class*="st-"] {
+    background: transparent !important;
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+/* Style the outer container as the actual input pill */
+.stTextInput > div:first-child {
+    background: #15151c !important;
     border: 1px solid var(--border) !important;
     border-radius: 12px !important;
-    color: var(--fg) !important;
+    transition: all 0.2s !important;
+    overflow: hidden !important;
+}
+.stTextInput > div:first-child:focus-within {
+    border-color: var(--accent) !important;
+    background: #18181f !important;
+    box-shadow: 0 0 0 4px var(--accent-soft) !important;
+}
+
+/* The actual input element */
+.stTextInput input,
+.stTextInput input[type="text"] {
+    background: transparent !important;
+    background-color: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    color: #f5f3ee !important;
+    -webkit-text-fill-color: #f5f3ee !important;
+    caret-color: var(--accent) !important;
     font-family: 'Inter', sans-serif !important;
     font-size: 1.05rem !important;
     font-weight: 400 !important;
     padding: 0.95rem 1.15rem !important;
-    transition: all 0.2s !important;
+    box-shadow: none !important;
+    outline: none !important;
 }
-.stTextInput > div > div > input::placeholder {
+.stTextInput input::placeholder {
     color: var(--fg-dim) !important;
+    -webkit-text-fill-color: var(--fg-dim) !important;
     font-weight: 300 !important;
+    opacity: 1 !important;
 }
-.stTextInput > div > div > input:focus {
-    border-color: var(--accent) !important;
-    box-shadow: 0 0 0 4px var(--accent-soft) !important;
-    background: rgba(255,255,255,0.04) !important;
+.stTextInput input:focus,
+.stTextInput input:focus-visible {
+    background: transparent !important;
+    box-shadow: none !important;
+    outline: none !important;
 }
-.stTextInput > label { display: none !important; }
 
 /* ── Button ── */
 .stButton > button {
@@ -479,35 +513,117 @@ html, body, [class*="css"] {
     color: var(--fg-dim);
     text-transform: uppercase;
 }
+.panel-body { padding-top: 0.25rem; }
+.panel-body > *:first-child { margin-top: 0 !important; }
+.panel-body > *:last-child  { margin-bottom: 0 !important; }
 
-/* ── Markdown styling inside panels ── */
-.report-panel h1, .report-panel h2, .report-panel h3 {
-    font-family: 'Inter', sans-serif;
-    color: var(--fg);
-    letter-spacing: -0.02em;
-    margin-top: 1.5rem;
-    margin-bottom: 0.6rem;
+/* Explicit fallback contrast for any element rendered inside a panel */
+.report-panel h1, .report-panel h2, .report-panel h3, .report-panel h4 {
+    color: #ffffff !important;
 }
-.report-panel h1 { font-size: 1.5rem; font-weight: 600; }
-.report-panel h2 { font-size: 1.2rem; font-weight: 600; }
-.report-panel h3 { font-size: 1rem; font-weight: 600; }
-.report-panel p, .report-panel li {
-    color: #d4d2cc;
-    line-height: 1.75;
-    font-size: 0.94rem;
+.report-panel p, .report-panel li, .report-panel span:not(.panel-tag):not(.panel-icon):not(.panel-icon *) {
+    color: #e8e6e0 !important;
+    line-height: 1.75 !important;
 }
-.report-panel ul, .report-panel ol { padding-left: 1.3rem; }
-.report-panel a { color: var(--accent); text-decoration: none; border-bottom: 1px solid var(--accent-line); }
-.report-panel a:hover { border-bottom-color: var(--accent); }
-.report-panel code {
-    background: rgba(255,255,255,0.05);
-    padding: 0.15rem 0.4rem;
-    border-radius: 4px;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.85em;
-    color: var(--accent);
+.report-panel strong, .report-panel b { color: #ffffff !important; font-weight: 600 !important; }
+
+/* ── Markdown styling (global — Streamlit splits HTML across blocks) ── */
+[data-testid="stMarkdownContainer"] h1,
+[data-testid="stMarkdownContainer"] h2,
+[data-testid="stMarkdownContainer"] h3,
+[data-testid="stMarkdownContainer"] h4 {
+    font-family: 'Inter', sans-serif !important;
+    color: #ffffff !important;
+    letter-spacing: -0.02em !important;
+    margin-top: 1.6rem !important;
+    margin-bottom: 0.7rem !important;
+    font-weight: 600 !important;
 }
-.report-panel hr { border: none; border-top: 1px solid var(--border); margin: 1.5rem 0; }
+[data-testid="stMarkdownContainer"] h1 { font-size: 1.65rem !important; }
+[data-testid="stMarkdownContainer"] h2 { font-size: 1.3rem !important; }
+[data-testid="stMarkdownContainer"] h3 { font-size: 1.05rem !important; }
+[data-testid="stMarkdownContainer"] h4 { font-size: 0.95rem !important; color: #f0eee8 !important; }
+
+[data-testid="stMarkdownContainer"] p,
+[data-testid="stMarkdownContainer"] li,
+[data-testid="stMarkdownContainer"] span {
+    color: #e8e6e0 !important;
+    line-height: 1.75 !important;
+    font-size: 0.96rem !important;
+    font-weight: 400 !important;
+}
+[data-testid="stMarkdownContainer"] strong,
+[data-testid="stMarkdownContainer"] b {
+    color: #ffffff !important;
+    font-weight: 600 !important;
+}
+[data-testid="stMarkdownContainer"] em,
+[data-testid="stMarkdownContainer"] i {
+    color: #f5f3ee !important;
+}
+[data-testid="stMarkdownContainer"] ul,
+[data-testid="stMarkdownContainer"] ol {
+    padding-left: 1.4rem !important;
+    margin: 0.6rem 0 1rem !important;
+}
+[data-testid="stMarkdownContainer"] li {
+    margin-bottom: 0.45rem !important;
+}
+[data-testid="stMarkdownContainer"] a {
+    color: var(--accent) !important;
+    text-decoration: none !important;
+    border-bottom: 1px solid var(--accent-line) !important;
+}
+[data-testid="stMarkdownContainer"] a:hover {
+    border-bottom-color: var(--accent) !important;
+}
+[data-testid="stMarkdownContainer"] code {
+    background: rgba(255,122,24,0.08) !important;
+    padding: 0.15rem 0.45rem !important;
+    border-radius: 4px !important;
+    font-family: 'JetBrains Mono', monospace !important;
+    font-size: 0.85em !important;
+    color: #ffb27a !important;
+    border: 1px solid rgba(255,122,24,0.18) !important;
+}
+[data-testid="stMarkdownContainer"] pre {
+    background: rgba(255,255,255,0.03) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 8px !important;
+    padding: 1rem !important;
+}
+[data-testid="stMarkdownContainer"] pre code {
+    background: transparent !important;
+    border: none !important;
+    color: #e8e6e0 !important;
+    padding: 0 !important;
+}
+[data-testid="stMarkdownContainer"] blockquote {
+    border-left: 2px solid var(--accent) !important;
+    padding-left: 1rem !important;
+    margin-left: 0 !important;
+    color: #c9c6bf !important;
+    font-style: italic !important;
+}
+[data-testid="stMarkdownContainer"] hr {
+    border: none !important;
+    border-top: 1px solid var(--border) !important;
+    margin: 1.5rem 0 !important;
+}
+[data-testid="stMarkdownContainer"] table {
+    border-collapse: collapse !important;
+    margin: 1rem 0 !important;
+}
+[data-testid="stMarkdownContainer"] th,
+[data-testid="stMarkdownContainer"] td {
+    border: 1px solid var(--border) !important;
+    padding: 0.6rem 0.9rem !important;
+    color: #e8e6e0 !important;
+}
+[data-testid="stMarkdownContainer"] th {
+    background: rgba(255,255,255,0.03) !important;
+    color: #ffffff !important;
+}
 
 /* ── Expander ── */
 .streamlit-expanderHeader, details summary {
@@ -813,44 +929,53 @@ if r:
         with st.expander("Reader Agent · scraped content", expanded=False):
             st.write(r["reader"])
 
-    # Final report
+    # Final report — combined into a single markdown call so the panel
+    # actually wraps the report content in the rendered DOM.
     if "writer" in r:
-        st.markdown(f"""
-        <div class="report-panel">
-          <div class="panel-header">
-            <div class="panel-title">
-              <span class="panel-icon">{ICON_REPORT}</span>
-              <span>Final Research Report</span>
-            </div>
-            <span class="panel-tag">Writer Chain · Output</span>
-          </div>
-        """, unsafe_allow_html=True)
-        st.markdown(r["writer"])
-        st.markdown("</div>", unsafe_allow_html=True)
+        report_block = f"""<div class="report-panel">
+<div class="panel-header">
+<div class="panel-title">
+<span class="panel-icon">{ICON_REPORT}</span>
+<span>Final Research Report</span>
+</div>
+<span class="panel-tag">Writer Chain · Output</span>
+</div>
+<div class="panel-body">
 
-        st.markdown("<div style='margin-top:1rem;display:flex;justify-content:flex-end;'>", unsafe_allow_html=True)
+{r["writer"]}
+
+</div>
+</div>"""
+        st.markdown(report_block, unsafe_allow_html=True)
+
+        st.markdown(
+            "<div style='margin-top:1rem;display:flex;justify-content:flex-end;'></div>",
+            unsafe_allow_html=True,
+        )
         st.download_button(
             label="Download Report (.md)",
             data=r["writer"],
             file_name=f"research_report_{int(time.time())}.md",
             mime="text/markdown",
         )
-        st.markdown("</div>", unsafe_allow_html=True)
 
     # Critic feedback
     if "critic" in r:
-        st.markdown(f"""
-        <div class="report-panel feedback">
-          <div class="panel-header">
-            <div class="panel-title">
-              <span class="panel-icon">{ICON_CRITIC}</span>
-              <span>Critic Feedback</span>
-            </div>
-            <span class="panel-tag">Critic Chain · Output</span>
-          </div>
-        """, unsafe_allow_html=True)
-        st.markdown(r["critic"])
-        st.markdown("</div>", unsafe_allow_html=True)
+        critic_block = f"""<div class="report-panel feedback">
+<div class="panel-header">
+<div class="panel-title">
+<span class="panel-icon">{ICON_CRITIC}</span>
+<span>Critic Feedback</span>
+</div>
+<span class="panel-tag">Critic Chain · Output</span>
+</div>
+<div class="panel-body">
+
+{r["critic"]}
+
+</div>
+</div>"""
+        st.markdown(critic_block, unsafe_allow_html=True)
 
 
 # ── Footer ───────────────────────────────────────────────────────────────────
