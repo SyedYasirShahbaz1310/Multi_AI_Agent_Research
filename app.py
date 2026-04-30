@@ -916,24 +916,42 @@ if st.session_state.running and not st.session_state.done:
         results["sources"] = _urls_from_response(sr)
         st.session_state.results = dict(results)
 
-    # ── Step 2: Direct scrape of top N URLs (no LLM in between) ──
+    # ── Step 2: Direct scrape — keep trying URLs until we have
+    #          MAX_SCRAPE *successful* (non-blocked) scrapes ──
     with st.spinner(f"Reader is scraping top {MAX_SCRAPE} sources…"):
         chunks = []
-        for i, url in enumerate(results["sources"][:MAX_SCRAPE], start=1):
+        used_urls = []
+        skipped = []
+        for url in results["sources"]:
+            if len(chunks) >= MAX_SCRAPE:
+                break
             try:
                 text = scrape_url.invoke(url)
             except Exception as e:
-                text = f"Could not scrape URL: {e}"
+                text = f"ERROR: {e}"
+
+            if text.startswith("BLOCKED:") or text.startswith("ERROR:"):
+                skipped.append((url, text))
+                continue
+
+            i = len(chunks) + 1
             chunks.append(
                 f"────── SOURCE {i} ──────\n"
                 f"URL: {url}\n\n"
                 f"{text}\n"
             )
-        results["reader"] = (
-            "\n\n".join(chunks) if chunks
-            else "(no URLs were available to scrape)"
-        )
-        results["scraped_urls"] = results["sources"][:MAX_SCRAPE]
+            used_urls.append(url)
+
+        if chunks:
+            reader_body = "\n\n".join(chunks)
+            if skipped:
+                skipped_block = "\n".join(f"- {u}  →  {t}" for u, t in skipped)
+                reader_body += f"\n\n────── SKIPPED ──────\n{skipped_block}"
+            results["reader"] = reader_body
+        else:
+            results["reader"] = "(no URLs could be scraped — all blocked or errored)"
+
+        results["scraped_urls"] = used_urls
         st.session_state.results = dict(results)
 
     # ── Step 3: Writer ──

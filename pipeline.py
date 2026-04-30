@@ -59,21 +59,36 @@ def format_sources_block(urls: list[str]) -> str:
     return "\n".join(f"- {u}" for u in urls) if urls else "(no URLs were captured)"
 
 
-def scrape_top_urls(urls: list[str], limit: int = MAX_SCRAPE) -> str:
-    """Directly scrape the top N URLs and concatenate the results into a
-    single string with clear per-source delimiters."""
+def scrape_top_urls(urls: list[str], limit: int = MAX_SCRAPE) -> tuple[str, list[str]]:
+    """Iterate through the URLs and scrape until we have `limit` SUCCESSFUL
+    scrapes (i.e. results that are not BLOCKED/ERROR). Returns
+    (concatenated_text, list_of_successfully_scraped_urls)."""
     chunks = []
-    for i, url in enumerate(urls[:limit], start=1):
+    used = []
+    for url in urls:
+        if len(chunks) >= limit:
+            break
         try:
             text = scrape_url.invoke(url)
         except Exception as e:
-            text = f"Could not scrape URL: {e}"
+            text = f"ERROR: {e}"
+
+        # skip cloudflare / paywall / error pages and try the next URL
+        if text.startswith("BLOCKED:") or text.startswith("ERROR:"):
+            print(f"  · skipped {url} → {text}")
+            continue
+
+        i = len(chunks) + 1
         chunks.append(
             f"────── SOURCE {i} ──────\n"
             f"URL: {url}\n\n"
             f"{text}\n"
         )
-    return "\n\n".join(chunks) if chunks else "(no URLs were available to scrape)"
+        used.append(url)
+
+    if not chunks:
+        return "(no URLs could be scraped — all blocked or errored)", []
+    return "\n\n".join(chunks), used
 
 
 # ─────────────────────────────────────────────────────────────
@@ -102,8 +117,9 @@ def run_research_pipeline(topic: str) -> dict:
     print(f"step 2 - directly scraping top {MAX_SCRAPE} URLs ...")
     print("=" * 50)
 
-    state["scraped_content"] = scrape_top_urls(state["sources"], limit=MAX_SCRAPE)
-    state["scraped_urls"] = state["sources"][:MAX_SCRAPE]
+    scraped_text, scraped_urls = scrape_top_urls(state["sources"], limit=MAX_SCRAPE)
+    state["scraped_content"] = scraped_text
+    state["scraped_urls"] = scraped_urls
 
     print("\nscraped content:\n", state["scraped_content"][:1500], "...\n")
     print("scraped URLs:", state["scraped_urls"])
