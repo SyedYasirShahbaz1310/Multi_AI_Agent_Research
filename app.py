@@ -864,14 +864,40 @@ if st.session_state.running and not st.session_state.done:
     results = {}
     topic_val = st.session_state.topic_input
 
-    # local helper — same as in pipeline.py
+    # ── URL extraction helpers (scan ALL messages incl. ToolMessage) ──
     URL_REGEX = re.compile(r"https?://[^\s\)\]\}<>\"']+")
+
+    def _msg_text(msg):
+        content = getattr(msg, "content", msg)
+        if isinstance(content, str):
+            return content
+        if isinstance(content, list):
+            parts = []
+            for p in content:
+                if isinstance(p, str):
+                    parts.append(p)
+                elif isinstance(p, dict):
+                    parts.append(str(p.get("text") or p.get("content") or p))
+            return "\n".join(parts)
+        return str(content)
+
     def _extract_urls(text):
         if not text:
             return []
         seen, out = set(), []
         for u in URL_REGEX.findall(text):
             u = u.rstrip(".,;:!?")
+            if u not in seen:
+                seen.add(u)
+                out.append(u)
+        return out
+
+    def _urls_from_response(resp):
+        urls = []
+        for m in resp.get("messages", []):
+            urls.extend(_extract_urls(_msg_text(m)))
+        seen, out = set(), []
+        for u in urls:
             if u not in seen:
                 seen.add(u)
                 out.append(u)
@@ -884,7 +910,7 @@ if st.session_state.running and not st.session_state.done:
             "messages": [("user", f"Find recent, reliable and detailed information about: {topic_val}")]
         })
         results["search"] = sr["messages"][-1].content
-        results["sources"] = _extract_urls(results["search"])
+        results["sources"] = _urls_from_response(sr)
         st.session_state.results = dict(results)
 
     # ── Step 2: Reader ──
@@ -898,9 +924,9 @@ if st.session_state.running and not st.session_state.done:
             )]
         })
         results["reader"] = rr["messages"][-1].content
-        # merge any extra URLs the reader saw
+        # merge any extra URLs the reader's tool saw
         results["sources"] = list(dict.fromkeys(
-            results["sources"] + _extract_urls(results["reader"])
+            results["sources"] + _urls_from_response(rr)
         ))
         st.session_state.results = dict(results)
 
