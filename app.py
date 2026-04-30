@@ -860,8 +860,22 @@ if run_btn:
         st.rerun()
 
 if st.session_state.running and not st.session_state.done:
+    import re
     results = {}
     topic_val = st.session_state.topic_input
+
+    # local helper — same as in pipeline.py
+    URL_REGEX = re.compile(r"https?://[^\s\)\]\}<>\"']+")
+    def _extract_urls(text):
+        if not text:
+            return []
+        seen, out = set(), []
+        for u in URL_REGEX.findall(text):
+            u = u.rstrip(".,;:!?")
+            if u not in seen:
+                seen.add(u)
+                out.append(u)
+        return out
 
     # ── Step 1: Search ──
     with st.spinner("Search Agent is gathering sources…"):
@@ -870,6 +884,7 @@ if st.session_state.running and not st.session_state.done:
             "messages": [("user", f"Find recent, reliable and detailed information about: {topic_val}")]
         })
         results["search"] = sr["messages"][-1].content
+        results["sources"] = _extract_urls(results["search"])
         st.session_state.results = dict(results)
 
     # ── Step 2: Reader ──
@@ -883,6 +898,10 @@ if st.session_state.running and not st.session_state.done:
             )]
         })
         results["reader"] = rr["messages"][-1].content
+        # merge any extra URLs the reader saw
+        results["sources"] = list(dict.fromkeys(
+            results["sources"] + _extract_urls(results["reader"])
+        ))
         st.session_state.results = dict(results)
 
     # ── Step 3: Writer ──
@@ -891,9 +910,14 @@ if st.session_state.running and not st.session_state.done:
             f"SEARCH RESULTS:\n{results['search']}\n\n"
             f"DETAILED SCRAPED CONTENT:\n{results['reader']}"
         )
+        sources_block = (
+            "\n".join(f"- {u}" for u in results["sources"])
+            if results["sources"] else "(no URLs were captured)"
+        )
         results["writer"] = writer_chain.invoke({
             "topic": topic_val,
-            "research": research_combined
+            "research": research_combined,
+            "sources": sources_block,
         })
         st.session_state.results = dict(results)
 

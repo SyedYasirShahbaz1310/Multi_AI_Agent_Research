@@ -13,7 +13,7 @@ llm = ChatGoogleGenerativeAI(
     temperature=0
 )
 
-#1st agent 
+# 1st agent
 def build_search_agent():
     return create_agent(
         model=llm,
@@ -21,41 +21,68 @@ def build_search_agent():
     )
 
 
-#2nd agent 
-
+# 2nd agent
 def build_reader_agent():
     return create_agent(
-        model = llm,
-        tools = [scrape_url]
+        model=llm,
+        tools=[scrape_url]
     )
 
-#writer chain 
 
+# ─────────────────────────────────────────────────────────────
+# Writer chain — STRICT about including the source URLs
+# ─────────────────────────────────────────────────────────────
 writer_prompt = ChatPromptTemplate.from_messages([
-    ("system", "You are an expert research writer. Write clear, structured and insightful reports."),
-    ("human", """Write a detailed research report on the topic below.
+    ("system",
+     "You are an expert research writer. Write clear, structured, insightful "
+     "reports in clean Markdown. You ALWAYS include every source URL you are "
+     "given, exactly as provided, in a final 'Sources' section. You never "
+     "drop, paraphrase, or summarise URLs."),
+    ("human",
+     """Write a detailed research report on the topic below.
 
 Topic: {topic}
 
 Research Gathered:
 {research}
 
-Structure the report as:
-- Introduction
-- Key Findings (minimum 3 well-explained points)
-- Conclusion
-- Sources (list all URLs found in the research)
+Verified Source URLs (you MUST include every single one of these verbatim
+in the final 'Sources' section as a numbered markdown list):
+{sources}
 
-Be detailed, factual and professional."""),
+Structure the report EXACTLY as:
+
+## Introduction
+(2-3 paragraphs)
+
+## Key Findings
+(minimum 3 well-explained points, each as a numbered item with a bold title)
+
+## Conclusion
+(1-2 paragraphs)
+
+## Sources
+A numbered list of every URL from the "Verified Source URLs" block above,
+formatted as clickable Markdown links like:
+1. [example.com](https://example.com)
+2. [another-site.org/article](https://another-site.org/article)
+
+Rules:
+- Do NOT invent URLs. Only use URLs from the Verified Source URLs block.
+- Do NOT skip any URL — include all of them.
+- Keep URLs exactly as given (no shortening, no editing).
+- Be detailed, factual and professional.
+""")
 ])
 
 writer_chain = writer_prompt | llm | StrOutputParser()
 
-#critic_chain 
 
-
+# ─────────────────────────────────────────────────────────────
+# Critic chain
+# ─────────────────────────────────────────────────────────────
 critic_prompt = ChatPromptTemplate.from_messages([
-     ("system", "You are a sharp and constructive research critic. Be honest and specific."),
+    ("system", "You are a sharp and constructive research critic. Be honest and specific."),
     ("human", """Review the research report below and evaluate it strictly.
 
 Report:
