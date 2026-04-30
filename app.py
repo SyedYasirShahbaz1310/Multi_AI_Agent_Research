@@ -1,6 +1,6 @@
 import streamlit as st
 import time
-from agents import build_reader_agent, build_search_agent, writer_chain, critic_chain
+from agents import build_search_agent, writer_chain, critic_chain
 
 # ── Page config ──────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -768,7 +768,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-# ── Hero ─────────────────────────────────────────────────────────────────────
+# ── Hero ───────────────────────��─────────────────────────────────────────────
 st.markdown(f"""
 <div class="hero">
   <div class="hero-eyebrow">Multi-Agent AI System</div>
@@ -861,8 +861,11 @@ if run_btn:
 
 if st.session_state.running and not st.session_state.done:
     import re
+    from tool import scrape_url
+
     results = {}
     topic_val = st.session_state.topic_input
+    MAX_SCRAPE = 3  # how many top URLs to fully scrape
 
     # ── URL extraction helpers (scan ALL messages incl. ToolMessage) ──
     URL_REGEX = re.compile(r"https?://[^\s\)\]\}<>\"']+")
@@ -913,28 +916,31 @@ if st.session_state.running and not st.session_state.done:
         results["sources"] = _urls_from_response(sr)
         st.session_state.results = dict(results)
 
-    # ── Step 2: Reader ──
-    with st.spinner("Reader Agent is scraping top resources…"):
-        reader_agent = build_reader_agent()
-        rr = reader_agent.invoke({
-            "messages": [("user",
-                f"Based on the following search results about '{topic_val}', "
-                f"pick the most relevant URL and scrape it for deeper content.\n\n"
-                f"Search Results:\n{results['search'][:800]}"
-            )]
-        })
-        results["reader"] = rr["messages"][-1].content
-        # merge any extra URLs the reader's tool saw
-        results["sources"] = list(dict.fromkeys(
-            results["sources"] + _urls_from_response(rr)
-        ))
+    # ── Step 2: Direct scrape of top N URLs (no LLM in between) ──
+    with st.spinner(f"Reader is scraping top {MAX_SCRAPE} sources…"):
+        chunks = []
+        for i, url in enumerate(results["sources"][:MAX_SCRAPE], start=1):
+            try:
+                text = scrape_url.invoke(url)
+            except Exception as e:
+                text = f"Could not scrape URL: {e}"
+            chunks.append(
+                f"────── SOURCE {i} ──────\n"
+                f"URL: {url}\n\n"
+                f"{text}\n"
+            )
+        results["reader"] = (
+            "\n\n".join(chunks) if chunks
+            else "(no URLs were available to scrape)"
+        )
+        results["scraped_urls"] = results["sources"][:MAX_SCRAPE]
         st.session_state.results = dict(results)
 
     # ── Step 3: Writer ──
     with st.spinner("Writer is drafting the report…"):
         research_combined = (
-            f"SEARCH RESULTS:\n{results['search']}\n\n"
-            f"DETAILED SCRAPED CONTENT:\n{results['reader']}"
+            f"SEARCH RESULTS (titles + snippets):\n{results['search']}\n\n"
+            f"FULL SCRAPED CONTENT FROM TOP {MAX_SCRAPE} SOURCES:\n{results['reader']}"
         )
         sources_block = (
             "\n".join(f"- {u}" for u in results["sources"])

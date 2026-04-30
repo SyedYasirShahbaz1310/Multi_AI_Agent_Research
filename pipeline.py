@@ -1,5 +1,10 @@
 import re
-from agents import build_reader_agent, build_search_agent, writer_chain, critic_chain
+from agents import build_search_agent, writer_chain, critic_chain
+from tool import scrape_url
+
+
+# How many top URLs to actually scrape in full
+MAX_SCRAPE = 3
 
 
 # ─────────────────────────────────────────────────────────────
@@ -27,7 +32,6 @@ def _msg_text(msg) -> str:
     if isinstance(content, str):
         return content
     if isinstance(content, list):
-        # content may be a list of dict parts (tool calls / multimodal)
         parts = []
         for p in content:
             if isinstance(p, str):
@@ -39,12 +43,10 @@ def _msg_text(msg) -> str:
 
 
 def urls_from_agent_response(agent_response: dict) -> list[str]:
-    """Scan EVERY message (incl. ToolMessage) for URLs — the LLM's final
-    summary often drops them, but the tool output always contains them."""
+    """Scan EVERY message (incl. ToolMessage) for URLs."""
     urls = []
     for m in agent_response.get("messages", []):
         urls.extend(extract_urls(_msg_text(m)))
-    # de-dup, preserve order
     seen, out = set(), []
     for u in urls:
         if u not in seen:
@@ -55,6 +57,23 @@ def urls_from_agent_response(agent_response: dict) -> list[str]:
 
 def format_sources_block(urls: list[str]) -> str:
     return "\n".join(f"- {u}" for u in urls) if urls else "(no URLs were captured)"
+
+
+def scrape_top_urls(urls: list[str], limit: int = MAX_SCRAPE) -> str:
+    """Directly scrape the top N URLs and concatenate the results into a
+    single string with clear per-source delimiters."""
+    chunks = []
+    for i, url in enumerate(urls[:limit], start=1):
+        try:
+            text = scrape_url.invoke(url)
+        except Exception as e:
+            text = f"Could not scrape URL: {e}"
+        chunks.append(
+            f"────── SOURCE {i} ──────\n"
+            f"URL: {url}\n\n"
+            f"{text}\n"
+        )
+    return "\n\n".join(chunks) if chunks else "(no URLs were available to scrape)"
 
 
 # ─────────────────────────────────────────────────────────────
@@ -78,28 +97,16 @@ def run_research_pipeline(topic: str) -> dict:
     print("\nsearch result:\n", state["search_results"])
     print("\nextracted URLs:", state["sources"])
 
-    # ── Step 2: Reader agent ─────────────────────────────────
+    # ── Step 2: Direct scraping of top N URLs ────────────────
     print("\n" + "=" * 50)
-    print("step 2 - Reader agent is scraping top resources ...")
+    print(f"step 2 - directly scraping top {MAX_SCRAPE} URLs ...")
     print("=" * 50)
 
-    reader_agent = build_reader_agent()
-    reader_response = reader_agent.invoke({
-        "messages": [("user",
-            f"Based on the following search results about '{topic}', "
-            f"pick the most relevant URL and scrape it for deeper content.\n\n"
-            f"Search Results:\n{state['search_results'][:800]}"
-        )]
-    })
-    state["scraped_content"] = reader_response["messages"][-1].content
+    state["scraped_content"] = scrape_top_urls(state["sources"], limit=MAX_SCRAPE)
+    state["scraped_urls"] = state["sources"][:MAX_SCRAPE]
 
-    # merge any extra URLs from the reader's messages too
-    state["sources"] = list(dict.fromkeys(
-        state["sources"] + urls_from_agent_response(reader_response)
-    ))
-
-    print("\nscraped content:\n", state["scraped_content"])
-    print("\nfinal source list:", state["sources"])
+    print("\nscraped content:\n", state["scraped_content"][:1500], "...\n")
+    print("scraped URLs:", state["scraped_urls"])
 
     # ── Step 3: Writer chain ─────────────────────────────────
     print("\n" + "=" * 50)
@@ -107,8 +114,8 @@ def run_research_pipeline(topic: str) -> dict:
     print("=" * 50)
 
     research_combined = (
-        f"SEARCH RESULTS:\n{state['search_results']}\n\n"
-        f"DETAILED SCRAPED CONTENT:\n{state['scraped_content']}"
+        f"SEARCH RESULTS (titles + snippets):\n{state['search_results']}\n\n"
+        f"FULL SCRAPED CONTENT FROM TOP {MAX_SCRAPE} SOURCES:\n{state['scraped_content']}"
     )
 
     state["report"] = writer_chain.invoke({
